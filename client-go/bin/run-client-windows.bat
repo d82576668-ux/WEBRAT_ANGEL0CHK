@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set "API_BASE_URL=http://localhost:8080"
+set "API_BASE_URL=https://webrat-angel0chk.onrender.com"
 set "DEVICE_NAME=%COMPUTERNAME%"
 set "STREAM_SECRET=webrat-secret"
 echo Starting WEBRAT client %DEVICE_NAME% to %API_BASE_URL%
