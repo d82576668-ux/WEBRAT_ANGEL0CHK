@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планеты Солнечной системы</title>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #0b0e14;
+            color: #eaeaea;
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        figure {
+            max-width: 260px;
+            text-align: center;
+        }
+
+        img {
+            width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
+        }
+
+        figcaption {
+            margin-top: 0.75rem;
+            font-size: 0.95rem;
+            opacity: 0.85;
+        }
+
+        a:focus {
+            outline: 2px solid #4da3ff;
+        }
+    </style>
+</head>
+<body>
+
+<figure>
+    <img
+        src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Solar_planets.jpg"
+        alt="Планеты Солнечной системы"
+        usemap="#solar-system-map"
+        loading="lazy"
+    >
+
+    <map name="solar-system-map">
+        <area shape="circle" coords="108,0,20"
+              href="https://ru.wikipedia.org/wiki/Солнце"
+              alt="Солнце" title="Солнце">
+
+        <area shape="circle" coords="108,53,5"
+              href="https://ru.wikipedia.org/wiki/Меркурий"
+              alt="Меркурий" title="Меркурий">
+
+        <area shape="circle" coords="108,85,10"
+              href="https://ru.wikipedia.org/wiki/Венера"
+              alt="Венера" title="Венера">
+
+        <area shape="circle" coords="108,115,10"
+              href="https://ru.wikipedia.org/wiki/Земля"
+              alt="Земля" title="Земля">
+
+        <area shape="circle" coords="108,145,7"
+              href="https://ru.wikipedia.org/wiki/Марс"
+              alt="Марс" title="Марс">
+
+        <area shape="circle" coords="108,262,73"
+              href="https://ru.wikipedia.org/wiki/Юпитер"
+              alt="Юпитер" title="Юпитер">
+
+        <area shape="circle" coords="108,417,59"
+              href="https://ru.wikipedia.org/wiki/Сатурн"
+              alt="Сатурн" title="Сатурн">
+
+        <area shape="circle" coords="108,531,26"
+              href="https://ru.wikipedia.org/wiki/Уран_(планета)"
+              alt="Уран" title="Уран">
+
+        <area shape="circle" coords="108,599,24"
+              href="https://ru.wikipedia.org/wiki/Нептун"
+              alt="Нептун" title="Нептун">
+    </map>
+
+    <figcaption>Планеты Солнечной системы</figcaption>
+</figure>
+
+</body>
+</html>

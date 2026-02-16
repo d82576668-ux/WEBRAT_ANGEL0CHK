@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: webrat-api
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false

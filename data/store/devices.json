@@ -1,0 +1,114 @@
+[
+  {
+    "id": "ed2cfe88-74b6-4115-a07a-316c015b5815",
+    "name": "DESKTOP-M48MM06",
+    "status": "online",
+    "created_at": "2026-02-13T16:33:56.751Z",
+    "last_seen": null
+  },
+  {
+    "id": "21db0d6b-595c-4d7f-9f3b-54c587a9ca4b",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:44:10.291Z",
+    "last_seen": null
+  },
+  {
+    "id": "20e9d049-ec05-4d96-bf58-52f963d0edef",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:44:42.677Z",
+    "last_seen": null
+  },
+  {
+    "id": "d238ecc0-b3ec-43af-8411-689ed06b228d",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:46:04.634Z",
+    "last_seen": null
+  },
+  {
+    "id": "dad3fdb3-e65f-49ab-a6ca-2010dc434eb6",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:46:06.269Z",
+    "last_seen": null
+  },
+  {
+    "id": "06849f3a-7b84-43ee-97af-0950b675e64c",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:48:55.458Z",
+    "last_seen": null
+  },
+  {
+    "id": "7ccff396-d49a-4ead-a98e-e686978a240f",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:49:49.707Z",
+    "last_seen": null
+  },
+  {
+    "id": "765125a6-4b6a-42b4-9963-53ea18fbec87",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:49:51.960Z",
+    "last_seen": null
+  },
+  {
+    "id": "efc7edf7-805f-482b-8881-ffa69aef9381",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:49:53.112Z",
+    "last_seen": null
+  },
+  {
+    "id": "0cc42683-40b4-4ce8-b6d4-574e4175a351",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:52:29.080Z",
+    "last_seen": null
+  },
+  {
+    "id": "0b5a6507-5204-4e5e-9c3e-415109955b56",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:53:07.668Z",
+    "last_seen": null
+  },
+  {
+    "id": "2e31eb06-dc8b-4e9a-aace-44a55b9bde46",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T16:53:47.999Z",
+    "last_seen": null
+  },
+  {
+    "id": "25128ff4-0043-4ba4-9d83-6dc968be9d36",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T17:02:33.429Z",
+    "last_seen": null
+  },
+  {
+    "id": "4186f34e-9a81-4037-aba5-402b7dd37388",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T18:28:02.897Z",
+    "last_seen": null
+  },
+  {
+    "id": "c87ae226-52aa-4130-962d-3ae471e1d13c",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T18:34:20.208Z",
+    "last_seen": null
+  },
+  {
+    "id": "db7563f6-d85d-4c00-9a10-dde2a44ab313",
+    "name": "DESKTOP-M48MM06-cs",
+    "status": "online",
+    "created_at": "2026-02-13T18:51:38.221Z",
+    "last_seen": "2026-02-13T18:57:11.423Z"
+  }
+]
