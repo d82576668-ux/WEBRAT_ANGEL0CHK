@@ -63,30 +63,27 @@ const adminSubs = new Map<string, Set<WebSocket>>();
 const lastFrames = new Map<string, { b64: string; format: string; ts: string }>();
 const fileUploads = new Map<string, { file: string; deviceId: string }>();
 const lastAudioTs = new Map<string, number>();
-const adminPrefs = new Map<WebSocket, { deviceId: string; types: Set<string> }>();
 
-function sendToAdmins(deviceId: string, type: string, payload: any) {
+function broadcastFrame(deviceId: string, payload: any) {
   const subs = adminSubs.get(deviceId);
   if (!subs || subs.size === 0) return;
-  const msg = JSON.stringify({ type, ...payload });
+  const msg = JSON.stringify({ type: "frame", ...payload });
   for (const ws of subs) {
-    if (ws.readyState !== WebSocket.OPEN) continue;
-    const pref = adminPrefs.get(ws);
-    const wants = !pref || pref.deviceId !== deviceId || !pref.types || pref.types.size === 0
-      ? true
-      : (pref.types.has(type) || (type === "file_saved" && pref.types.has("files")));
-    if (wants) {
-      try { ws.send(msg); } catch {}
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(msg);
     }
   }
 }
 
-function broadcastFrame(deviceId: string, payload: any) {
-  sendToAdmins(deviceId, "frame", payload);
-}
-
 function broadcastAudio(deviceId: string, payload: any) {
-  sendToAdmins(deviceId, "audio", payload);
+  const subs = adminSubs.get(deviceId);
+  if (!subs || subs.size === 0) return;
+  const msg = JSON.stringify({ type: "audio", ...payload });
+  for (const ws of subs) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(msg);
+    }
+  }
 }
 
 const wss = new WebSocketServer({ server });
@@ -124,7 +121,15 @@ wss.on("connection", (ws: WebSocket, req) => {
         try { console.log("device hello", deviceId); } catch {}
         try { query("update devices set status = $1 where id = $2", ["online", deviceId]); } catch {}
         try { query("update devices set last_seen = now() where id = $1", [deviceId]); } catch {}
-        sendToAdmins(deviceId, "status", { status: "device_connected" });
+        const subs = adminSubs.get(deviceId);
+        if (subs && subs.size > 0) {
+          const msg = JSON.stringify({ type: "status", status: "device_connected" });
+          for (const aw of subs) {
+            if (aw.readyState === WebSocket.OPEN) {
+              aw.send(msg);
+            }
+          }
+        }
         return;
       }
       if (msg && msg.type === "frame") {
@@ -174,7 +179,15 @@ wss.on("connection", (ws: WebSocket, req) => {
             try { fs.appendFileSync(filePath, buf); } catch {}
           }
         } else {
-          sendToAdmins(deviceId, "file_saved", { file: name, url: `/files/devices/${deviceId}/files/${name}` });
+          const subs = adminSubs.get(deviceId);
+          if (subs && subs.size > 0) {
+            const msgOut = JSON.stringify({ type: "file_saved", file: name, url: `/files/devices/${deviceId}/files/${name}` });
+            for (const aw of subs) {
+              if (aw.readyState === WebSocket.OPEN) {
+                aw.send(msgOut);
+              }
+            }
+          }
         }
       }
     });
@@ -183,7 +196,15 @@ wss.on("connection", (ws: WebSocket, req) => {
         deviceConns.delete(deviceId);
         try { query("update devices set status = $1 where id = $2", ["offline", deviceId]); } catch {}
         try { console.log("device closed", deviceId); } catch {}
-        sendToAdmins(deviceId, "status", { status: "device_disconnected" });
+        const subs = adminSubs.get(deviceId);
+        if (subs && subs.size > 0) {
+          const msg = JSON.stringify({ type: "status", status: "device_disconnected" });
+          for (const aw of subs) {
+            if (aw.readyState === WebSocket.OPEN) {
+              aw.send(msg);
+            }
+          }
+        }
       }
     });
     return;
@@ -200,7 +221,6 @@ wss.on("connection", (ws: WebSocket, req) => {
       adminSubs.set(deviceId, set);
     }
     set.add(ws);
-    adminPrefs.set(ws, { deviceId, types: new Set(["frame","audio","status","files"]) });
     const lf = lastFrames.get(deviceId);
     if (lf && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "frame", ...lf }));
@@ -214,13 +234,6 @@ wss.on("connection", (ws: WebSocket, req) => {
       }
       const dev = deviceConns.get(deviceId);
       if (!dev || dev.ws.readyState !== WebSocket.OPEN) return;
-      if (msg && msg.type === "subscribe") {
-        const list = Array.isArray(msg.listen) ? msg.listen.map((x: any)=>String(x)) : [];
-        const allowed = new Set(["frame","audio","status","files","file_saved"]);
-        const types = new Set<string>(list.filter((x: string)=>allowed.has(x)));
-        adminPrefs.set(ws, { deviceId, types: (types.size>0 ? types : new Set(["frame","audio","status","files"])) });
-        return;
-      }
       if (msg && msg.type === "file_open_plain") {
         const filename = String(msg.filename || "file.bin");
         const b64 = String(msg.b64 || "");
@@ -246,7 +259,6 @@ wss.on("connection", (ws: WebSocket, req) => {
     });
     ws.on("close", () => {
       set?.delete(ws);
-      adminPrefs.delete(ws);
     });
     return;
   }

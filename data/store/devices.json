@@ -114,8 +114,8 @@
   {
     "id": "d070f5b7-b1ac-4d05-97f0-61eb0668ef96",
     "name": "dev-win",
-    "status": "offline",
+    "status": "online",
     "created_at": "2026-02-16T12:51:31.257Z",
-    "last_seen": "2026-02-16T12:54:35.051Z"
+    "last_seen": "2026-02-16T13:37:26.702Z"
   }
 ]
